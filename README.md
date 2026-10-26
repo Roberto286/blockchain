@@ -54,8 +54,8 @@ Rather than aiming to build a production-ready blockchain from the start, the fo
 Clone the repository:
 
 ```bash
-git clone <your-repository-url>
-cd <your-repository-directory>
+git clone https://github.com/Roberto286/blockchain.git 
+cd blockchain 
 ```
 
 Download the project dependencies:
