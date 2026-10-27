@@ -1,26 +1,38 @@
 package main
 
 import (
-	"log"
-	"net"
-	"os"
-
-	"github.com/joho/godotenv"
-
+	shared "blockchain/internal"
 	"blockchain/internal/chain"
 	"blockchain/internal/server"
+	"log"
+	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
-	l, err := net.Listen("tcp", ":"+os.Getenv("ADDR"))
+	err := godotenv.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer l.Close()
 
-	log.Fatal(server.New(chain.New()).Serve(l))
+	go func() {
+		t := time.Now()
+		genesisBlock := chain.Block{}
+		genesisBlock = chain.Block{
+			Index:      0,
+			Timestamp:  t.String(),
+			BPM:        0,
+			Hash:       chain.CalculateHash(genesisBlock),
+			PrevHash:   "",
+			Difficulty: shared.Difficulty,
+			Nonce:      "",
+		}
+		spew.Dump(genesisBlock)
+		shared.Mutex.Lock()
+		chain.Blockchain = append(chain.Blockchain, genesisBlock)
+		shared.Mutex.Unlock()
+	}()
+	log.Fatal(server.Run())
 }

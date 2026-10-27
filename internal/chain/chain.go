@@ -14,6 +14,8 @@ type Chain struct {
 	blocks []Block
 }
 
+var Blockchain []Block
+
 // New returns a chain containing only the genesis block.
 func New() *Chain {
 	return &Chain{blocks: []Block{{Timestamp: time.Now().String()}}}
@@ -25,8 +27,8 @@ func (c *Chain) Add(bpm int) (Block, error) {
 	defer c.mu.Unlock()
 
 	prev := c.blocks[len(c.blocks)-1]
-	b := newBlock(prev, bpm)
-	if !isValid(b, prev) {
+	b := GenerateBlock(prev, bpm)
+	if !IsBlockValid(b, prev) {
 		return Block{}, ErrInvalidBlock
 	}
 	c.blocks = append(c.blocks, b)

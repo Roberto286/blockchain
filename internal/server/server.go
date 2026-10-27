@@ -1,88 +1,91 @@
-// Package server exposes a chain over raw TCP.
 package server
 
 import (
-	"bufio"
+	shared "blockchain/internal"
+	"blockchain/internal/chain"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
-	"net"
-	"strconv"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-
-	"blockchain/internal/chain"
+	"github.com/gorilla/mux"
 )
 
-const broadcastInterval = 30 * time.Second
-
-type Server struct {
-	chain *chain.Chain
+type Message struct {
+	BPM int
 }
 
-func New(c *chain.Chain) *Server {
-	return &Server{chain: c}
-}
-
-// Serve accepts connections on l until it fails.
-func (s *Server) Serve(l net.Listener) error {
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			return err
-		}
-		go s.handleConn(conn)
+func Run() error {
+	mux := makeMuxRouter()
+	httpAddr := os.Getenv("ADDR")
+	log.Printf("Listening on %v", httpAddr)
+	s := &http.Server{
+		Addr:           ":" + httpAddr,
+		Handler:        mux,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
 	}
+
+	if err := s.ListenAndServe(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
-
-	done := make(chan struct{})
-	defer close(done)
-	go s.broadcast(conn, done)
-
-	io.WriteString(conn, "Enter a new BPM:")
-
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		bpm, err := strconv.Atoi(scanner.Text())
-		if err != nil {
-			log.Printf("%q not a number: %v", scanner.Text(), err)
-			fmt.Fprint(conn, "\nEnter a new BPM:")
-			continue
-		}
-
-		if _, err := s.chain.Add(bpm); err != nil {
-			log.Println(err)
-		} else {
-			spew.Dump(s.chain.Blocks())
-		}
-		fmt.Fprint(conn, "\nEnter a new BPM:")
-	}
+func makeMuxRouter() http.Handler {
+	muxRouter := mux.NewRouter()
+	muxRouter.HandleFunc("/", handleGetBlockchain).Methods("GET")
+	muxRouter.HandleFunc("/", handleWriteBlock).Methods("POST")
+	return muxRouter
 }
 
-// broadcast periodically writes the chain as JSON to conn until done is closed
-// or a write fails.
-func (s *Server) broadcast(conn net.Conn, done <-chan struct{}) {
-	t := time.NewTicker(broadcastInterval)
-	defer t.Stop()
-
-	for {
-		select {
-		case <-done:
-			return
-		case <-t.C:
-			out, err := json.Marshal(s.chain.Blocks())
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			if _, err := conn.Write(out); err != nil {
-				return
-			}
-		}
+func handleGetBlockchain(w http.ResponseWriter, r *http.Request) {
+	bytes, err := json.MarshalIndent(chain.Blockchain, "", "  ")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	io.WriteString(w, string(bytes))
+}
+
+func respondWithJSON(w http.ResponseWriter, r *http.Request, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("HTTP 500: Internal Server Error"))
+		return
+	}
+	w.WriteHeader(code)
+	w.Write(response)
+}
+
+func handleWriteBlock(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var m Message
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		respondWithJSON(w, r, http.StatusBadRequest, r.Body)
+		return
+	}
+	defer r.Body.Close()
+
+	shared.Mutex.Lock()
+	//ensure atomicity when creating new block
+	newBlock := chain.GenerateBlock(chain.Blockchain[len(chain.Blockchain)-1], m.BPM)
+	shared.Mutex.Unlock()
+
+	if chain.IsBlockValid(newBlock, chain.Blockchain[len(chain.Blockchain)-1]) {
+		chain.Blockchain = append(chain.Blockchain, newBlock)
+		spew.Dump(chain.Blockchain)
+	}
+
+	respondWithJSON(w, r, http.StatusCreated, newBlock)
+
 }
