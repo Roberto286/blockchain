@@ -2,7 +2,10 @@
 
 A minimal blockchain implementation in Go, built as a hands-on learning project to explore the fundamentals of blockchain technology and the Go programming language.
 
-This project follows the tutorial **[Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/code-your-own-blockchain-in-less-than-200-lines-of-go-e296282bcffc)** by Coral Health.
+This project follows the tutorials by Coral Health:
+
+1. **[Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/code-your-own-blockchain-in-less-than-200-lines-of-go-e296282bcffc)** — blocks, hashing, validation, HTTP API.
+2. **[Part 2: Networking — Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/part-2-networking-code-your-own-blockchain-in-less-than-200-lines-of-go-17fe1dad46e1)** — TCP networking (current implementation).
 
 ## Overview
 
@@ -15,7 +18,8 @@ The goal of this project is to understand how a basic blockchain works by implem
 - **Chain integrity** — links blocks together through their previous hashes.
 - **Block validation** — checks block indexes, previous hashes, and calculated hashes.
 - **Longest-chain rule** — provides a basic mechanism for choosing between chains of different lengths.
-- **HTTP API** — exposes endpoints to inspect the blockchain and append new blocks.
+- **TCP server** — accepts multiple clients; each one submits a BPM value over a raw TCP connection to append a new block.
+- **Periodic broadcast** — every 30 seconds each connection receives the current chain as JSON.
 - **Environment configuration** — loads configuration from a `.env` file.
 
 ## Project Goals
@@ -38,7 +42,6 @@ Rather than aiming to build a production-ready blockchain from the start, the fo
 ## Tech Stack
 
 - [Go](https://go.dev/)
-- [Gorilla Mux](https://github.com/gorilla/mux) — HTTP routing.
 - [godotenv](https://github.com/joho/godotenv) — environment variable loading.
 - [go-spew](https://github.com/davecgh/go-spew) — readable debugging output.
 
@@ -69,10 +72,10 @@ go mod download
 Create a `.env` file in the project root:
 
 ```dotenv
-PORT=8080
+ADDR=8080
 ```
 
-The application uses the `PORT` environment variable to configure the HTTP server's listening port.
+The application uses the `ADDR` environment variable to configure the TCP server's listening port.
 
 ### Run the Application
 
@@ -84,36 +87,17 @@ go run .
 
 The server should start listening on port `8080`, assuming that is the port configured in your `.env` file.
 
-## API
+## Usage (TCP)
 
-The application exposes HTTP endpoints to interact with the blockchain.
+Connect with netcat (port from `ADDR`):
 
-### Get the Blockchain
-
-```http
-GET /
+```bash
+nc localhost 8080
 ```
 
-Returns the current blockchain as JSON.
+Type a number (the BPM) and press Enter to append a block. The server dumps the updated chain to its console, and every 30 seconds each client receives the full chain as JSON.
 
-### Add a Block
-
-```http
-POST /
-Content-Type: application/json
-```
-
-Example request body:
-
-```json
-{
-  "BPM": 75
-}
-```
-
-The server uses the submitted data to generate a new block, calculate its hash, link it to the previous block, and validate it before appending it to the chain.
-
-> Note: The exact endpoints, request fields, and behavior depend on the implementation in this repository.
+> The HTTP API from part 1 (Gorilla Mux, `GET /` and `POST /`) was replaced by the TCP server in part 2.
 
 ## How It Works
 
@@ -122,7 +106,7 @@ The server uses the submitted data to generate a new block, calculate its hash, 
 3. **Hash calculation** — computes a SHA-256 digest from the block's relevant fields.
 4. **Chain linking** — stores the previous block's hash in the new block.
 5. **Validation** — checks the block's index, previous hash, and calculated hash.
-6. **HTTP interaction** — allows clients to retrieve the chain and submit new blocks.
+6. **TCP interaction** — clients connect over TCP, submit BPM values, and periodically receive the chain.
 
 ## Limitations
 
@@ -136,7 +120,7 @@ The implementation is intended to make blockchain concepts easier to understand 
 
 - **Original tutorial:** [Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/code-your-own-blockchain-in-less-than-200-lines-of-go-e296282bcffc) — Coral Health.
 - **Go documentation:** [go.dev/doc](https://go.dev/doc/).
-- **Gorilla Mux:** [github.com/gorilla/mux](https://github.com/gorilla/mux).
+- **Part 2 (networking):** [Coral Health on Medium](https://mycoralhealth.medium.com/part-2-networking-code-your-own-blockchain-in-less-than-200-lines-of-go-17fe1dad46e1).
 
 ---
 
