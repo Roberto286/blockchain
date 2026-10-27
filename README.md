@@ -5,7 +5,8 @@ A minimal blockchain implementation in Go, built as a hands-on learning project 
 This project follows the tutorials by Coral Health:
 
 1. **[Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/code-your-own-blockchain-in-less-than-200-lines-of-go-e296282bcffc)** — blocks, hashing, validation, HTTP API.
-2. **[Part 2: Networking — Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/part-2-networking-code-your-own-blockchain-in-less-than-200-lines-of-go-17fe1dad46e1)** — TCP networking (current implementation).
+2. **[Part 2: Networking — Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/part-2-networking-code-your-own-blockchain-in-less-than-200-lines-of-go-17fe1dad46e1)** — TCP networking (implementation replaced by part 3).
+3. **[Code your own blockchain mining algorithm in Go!](https://mycoralhealth.medium.com/code-your-own-blockchain-mining-algorithm-in-go-82c6a71aba1f)** — mining / proof-of-work (current implementation).
 
 ## Overview
 
@@ -13,13 +14,13 @@ The goal of this project is to understand how a basic blockchain works by implem
 
 ### Features
 
-- **Block structure** — represents each block with an index, timestamp, data, hash, and reference to the previous block.
-- **SHA-256 hashing** — generates a hash for each block based on its contents.
+- **Block structure** — represents each block with an index, timestamp, data, hash, reference to the previous block, difficulty and nonce.
+- **SHA-256 hashing** — generates a hash for each block based on its contents (including the nonce).
 - **Chain integrity** — links blocks together through their previous hashes.
 - **Block validation** — checks block indexes, previous hashes, and calculated hashes.
+- **Mining (proof-of-work)** — a new block is only accepted once its hash starts with `Difficulty` leading zeros; the miner tries increasing nonces until one hashes to a valid block.
 - **Longest-chain rule** — provides a basic mechanism for choosing between chains of different lengths.
-- **TCP server** — accepts multiple clients; each one submits a BPM value over a raw TCP connection to append a new block.
-- **Periodic broadcast** — every 30 seconds each connection receives the current chain as JSON.
+- **HTTP API** — `GET /` returns the chain as JSON; `POST /` with a BPM value mines and appends a block.
 - **Environment configuration** — loads configuration from a `.env` file.
 
 ## Project Goals
@@ -75,7 +76,7 @@ Create a `.env` file in the project root:
 ADDR=8080
 ```
 
-The application uses the `ADDR` environment variable to configure the TCP server's listening port.
+The application uses the `ADDR` environment variable to configure the HTTP server's listening port.
 
 ### Run the Application
 
@@ -87,34 +88,44 @@ go run ./cmd/blockchain
 
 The server should start listening on port `8080`, assuming that is the port configured in your `.env` file.
 
-## Usage (TCP)
+## Usage (HTTP)
 
-Connect with netcat (port from `ADDR`):
+`GET /` returns the current chain as JSON:
 
 ```bash
-nc localhost 8080
+curl http://localhost:8080/
 ```
 
-Type a number (the BPM) and press Enter to append a block. The server dumps the updated chain to its console, and every 30 seconds each client receives the full chain as JSON.
+`POST /` mines and appends a new block for the given BPM:
 
-> The HTTP API from part 1 (Gorilla Mux, `GET /` and `POST /`) was replaced by the TCP server in part 2.
+```bash
+curl -X POST -H 'Content-Type: application/json' \
+     -d '{"BPM": 70}' \
+     http://localhost:8080/
+```
+
+The server responds with the newly mined block (`201 Created`). Note that mining takes a moment: the miner tries nonces one at a time until the hash has the required number of leading zeros.
+
+> The TCP server from part 2 (periodic chain broadcast) was replaced by the HTTP API again in part 3, following the mining tutorial.
 
 ## Project Structure
 
 ```
-cmd/blockchain/   entry point: loads config, starts the TCP server
-internal/chain/   Block, hashing, validation, concurrency-safe Chain
-internal/server/  TCP connection handling and periodic broadcast
+cmd/blockchain/   entry point: loads config, creates the genesis block, starts the HTTP server
+internal/chain/   Block, hashing, proof-of-work mining, validation, concurrency-safe Chain
+internal/server/  HTTP API (Gorilla Mux)
+internal/shared.go  values shared across packages: Difficulty and the safety Mutex
 ```
 
 ## How It Works
 
-1. **Genesis block** — initializes the blockchain with its first block.
+1. **Genesis block** — initializes the blockchain with its first block (difficulty set, empty previous hash).
 2. **Block creation** — generates a new block containing a timestamp, an index, and application data.
 3. **Hash calculation** — computes a SHA-256 digest from the block's relevant fields.
-4. **Chain linking** — stores the previous block's hash in the new block.
-5. **Validation** — checks the block's index, previous hash, and calculated hash.
-6. **TCP interaction** — clients connect over TCP, submit BPM values, and periodically receive the chain.
+4. **Mining (proof-of-work)** — iterates over nonces until the block hash starts with `Difficulty` leading zeros, then records the winning nonce and hash.
+5. **Chain linking** — stores the previous block's hash in the new block.
+6. **Validation** — checks the block's index, previous hash, and calculated hash.
+7. **HTTP interaction** — clients submit BPM values and fetch the chain over the HTTP API.
 
 ## Limitations
 
@@ -129,6 +140,7 @@ The implementation is intended to make blockchain concepts easier to understand 
 - **Original tutorial:** [Code your own blockchain in less than 200 lines of Go!](https://mycoralhealth.medium.com/code-your-own-blockchain-in-less-than-200-lines-of-go-e296282bcffc) — Coral Health.
 - **Go documentation:** [go.dev/doc](https://go.dev/doc/).
 - **Part 2 (networking):** [Coral Health on Medium](https://mycoralhealth.medium.com/part-2-networking-code-your-own-blockchain-in-less-than-200-lines-of-go-17fe1dad46e1).
+- **Part 3 (mining):** [Coral Health on Medium](https://mycoralhealth.medium.com/code-your-own-blockchain-mining-algorithm-in-go-82c6a71aba1f).
 
 ---
 
