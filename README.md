@@ -82,7 +82,7 @@ The application uses the `ADDR` environment variable to configure the TCP server
 Start the server with:
 
 ```bash
-go run .
+go run ./cmd/blockchain
 ```
 
 The server should start listening on port `8080`, assuming that is the port configured in your `.env` file.
@@ -98,6 +98,14 @@ nc localhost 8080
 Type a number (the BPM) and press Enter to append a block. The server dumps the updated chain to its console, and every 30 seconds each client receives the full chain as JSON.
 
 > The HTTP API from part 1 (Gorilla Mux, `GET /` and `POST /`) was replaced by the TCP server in part 2.
+
+## Project Structure
+
+```
+cmd/blockchain/   entry point: loads config, starts the TCP server
+internal/chain/   Block, hashing, validation, concurrency-safe Chain
+internal/server/  TCP connection handling and periodic broadcast
+```
 
 ## How It Works
 
