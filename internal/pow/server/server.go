@@ -1,8 +1,8 @@
 package server
 
 import (
-	shared "blockchain/internal"
-	"blockchain/internal/chain"
+	"blockchain/internal/pow/chain"
+	shared "blockchain/internal/pow/shared"
 	"encoding/json"
 	"io"
 	"log"

@@ -83,7 +83,7 @@ The application uses the `ADDR` environment variable to configure the HTTP serve
 Start the server with:
 
 ```bash
-go run ./cmd/blockchain
+go run ./cmd/pow
 ```
 
 The server should start listening on port `8080`, assuming that is the port configured in your `.env` file.
@@ -111,10 +111,10 @@ The server responds with the newly mined block (`201 Created`). Note that mining
 ## Project Structure
 
 ```
-cmd/blockchain/   entry point: loads config, creates the genesis block, starts the HTTP server
-internal/chain/   Block, hashing, proof-of-work mining, validation, concurrency-safe Chain
-internal/server/  HTTP API (Gorilla Mux)
-internal/shared.go  values shared across packages: Difficulty and the safety Mutex
+cmd/pow/          entry point: loads config, creates the genesis block, starts the HTTP server
+internal/pow/chain/   Block, hashing, proof-of-work mining, validation, concurrency-safe Chain
+internal/pow/server/  HTTP API (Gorilla Mux)
+internal/pow/shared/  values shared across packages: Difficulty and the safety Mutex
 ```
 
 ## How It Works
