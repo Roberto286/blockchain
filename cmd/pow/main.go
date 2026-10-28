@@ -2,7 +2,7 @@ package main
 
 import (
 	"blockchain/internal/chain"
-	"blockchain/internal/server"
+	"blockchain/internal/httpserver"
 	shared "blockchain/internal/shared"
 	"log"
 	"time"
@@ -34,5 +34,5 @@ func main() {
 		chain.Blockchain = append(chain.Blockchain, genesisBlock)
 		shared.Mutex.Unlock()
 	}()
-	log.Fatal(server.Run())
+	log.Fatal(httpserver.Run())
 }
