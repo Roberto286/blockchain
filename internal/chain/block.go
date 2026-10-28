@@ -2,7 +2,7 @@
 package chain
 
 import (
-	shared "blockchain/internal/pow/shared"
+	shared "blockchain/internal/shared"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"

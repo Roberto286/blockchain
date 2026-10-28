@@ -1,9 +1,9 @@
 package main
 
 import (
-	"blockchain/internal/pow/chain"
-	"blockchain/internal/pow/server"
-	shared "blockchain/internal/pow/shared"
+	"blockchain/internal/chain"
+	"blockchain/internal/server"
+	shared "blockchain/internal/shared"
 	"log"
 	"time"
 
