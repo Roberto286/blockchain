@@ -4,4 +4,6 @@ import "sync"
 
 var Mutex = &sync.Mutex{}
 
-const Difficulty = 1
+var Announcements = make(chan string)
+
+var validators = make(map[string]int)

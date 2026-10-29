@@ -15,19 +15,20 @@ type Chain struct {
 }
 
 var Blockchain []Block
+var TempBlocks []Block
 
 // New returns a chain containing only the genesis block.
 func New() *Chain {
 	return &Chain{blocks: []Block{{Timestamp: time.Now().String()}}}
 }
 
-// Add generates a block for bpm, validates it and appends it to the chain.
-func (c *Chain) Add(bpm int) (Block, error) {
+// Add generates a block for bpm with gen, validates it and appends it to the chain.
+func (c *Chain) Add(gen Generator, bpm int) (Block, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	prev := c.blocks[len(c.blocks)-1]
-	b := GenerateBlock(prev, bpm)
+	b := gen(prev, bpm)
 	if !IsBlockValid(b, prev) {
 		return Block{}, ErrInvalidBlock
 	}

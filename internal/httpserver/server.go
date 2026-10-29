@@ -18,8 +18,8 @@ type Message struct {
 	BPM int
 }
 
-func Run() error {
-	mux := makeMuxRouter()
+func Run(gen chain.Generator) error {
+	mux := makeMuxRouter(gen)
 	httpAddr := os.Getenv("ADDR")
 	log.Printf("Listening on %v", httpAddr)
 	s := &http.Server{
@@ -37,10 +37,10 @@ func Run() error {
 	return nil
 }
 
-func makeMuxRouter() http.Handler {
+func makeMuxRouter(gen chain.Generator) http.Handler {
 	muxRouter := mux.NewRouter()
 	muxRouter.HandleFunc("/", handleGetBlockchain).Methods("GET")
-	muxRouter.HandleFunc("/", handleWriteBlock).Methods("POST")
+	muxRouter.HandleFunc("/", handleWriteBlock(gen)).Methods("POST")
 	return muxRouter
 }
 
@@ -65,27 +65,29 @@ func respondWithJSON(w http.ResponseWriter, r *http.Request, code int, payload i
 	w.Write(response)
 }
 
-func handleWriteBlock(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var m Message
+func handleWriteBlock(gen chain.Generator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var m Message
 
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&m); err != nil {
-		respondWithJSON(w, r, http.StatusBadRequest, r.Body)
-		return
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&m); err != nil {
+			respondWithJSON(w, r, http.StatusBadRequest, r.Body)
+			return
+		}
+		defer r.Body.Close()
+
+		shared.Mutex.Lock()
+		//ensure atomicity when creating new block
+		newBlock := gen(chain.Blockchain[len(chain.Blockchain)-1], m.BPM)
+		shared.Mutex.Unlock()
+
+		if chain.IsBlockValid(newBlock, chain.Blockchain[len(chain.Blockchain)-1]) {
+			chain.Blockchain = append(chain.Blockchain, newBlock)
+			spew.Dump(chain.Blockchain)
+		}
+
+		respondWithJSON(w, r, http.StatusCreated, newBlock)
+
 	}
-	defer r.Body.Close()
-
-	shared.Mutex.Lock()
-	//ensure atomicity when creating new block
-	newBlock := chain.GenerateBlock(chain.Blockchain[len(chain.Blockchain)-1], m.BPM)
-	shared.Mutex.Unlock()
-
-	if chain.IsBlockValid(newBlock, chain.Blockchain[len(chain.Blockchain)-1]) {
-		chain.Blockchain = append(chain.Blockchain, newBlock)
-		spew.Dump(chain.Blockchain)
-	}
-
-	respondWithJSON(w, r, http.StatusCreated, newBlock)
-
 }

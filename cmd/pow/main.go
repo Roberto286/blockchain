@@ -3,6 +3,7 @@ package main
 import (
 	"blockchain/internal/chain"
 	"blockchain/internal/httpserver"
+	"blockchain/internal/pow"
 	shared "blockchain/internal/shared"
 	"log"
 	"time"
@@ -24,9 +25,9 @@ func main() {
 			Index:      0,
 			Timestamp:  t.String(),
 			BPM:        0,
-			Hash:       chain.CalculateHash(genesisBlock),
+			Hash:       chain.CalculateBlockHash(genesisBlock),
 			PrevHash:   "",
-			Difficulty: shared.Difficulty,
+			Difficulty: pow.Difficulty,
 			Nonce:      "",
 		}
 		spew.Dump(genesisBlock)
@@ -34,5 +35,5 @@ func main() {
 		chain.Blockchain = append(chain.Blockchain, genesisBlock)
 		shared.Mutex.Unlock()
 	}()
-	log.Fatal(httpserver.Run())
+	log.Fatal(httpserver.Run(pow.GenerateBlock))
 }
