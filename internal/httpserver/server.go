@@ -18,8 +18,8 @@ type Message struct {
 	BPM int
 }
 
-func Run(gen chain.Generator) error {
-	mux := makeMuxRouter(gen)
+func Run(gen chain.Generator, valid chain.Validator) error {
+	mux := makeMuxRouter(gen, valid)
 	httpAddr := os.Getenv("ADDR")
 	log.Printf("Listening on %v", httpAddr)
 	s := &http.Server{
@@ -37,10 +37,10 @@ func Run(gen chain.Generator) error {
 	return nil
 }
 
-func makeMuxRouter(gen chain.Generator) http.Handler {
+func makeMuxRouter(gen chain.Generator, valid chain.Validator) http.Handler {
 	muxRouter := mux.NewRouter()
 	muxRouter.HandleFunc("/", handleGetBlockchain).Methods("GET")
-	muxRouter.HandleFunc("/", handleWriteBlock(gen)).Methods("POST")
+	muxRouter.HandleFunc("/", handleWriteBlock(gen, valid)).Methods("POST")
 	return muxRouter
 }
 
@@ -65,7 +65,7 @@ func respondWithJSON(w http.ResponseWriter, r *http.Request, code int, payload i
 	w.Write(response)
 }
 
-func handleWriteBlock(gen chain.Generator) http.HandlerFunc {
+func handleWriteBlock(gen chain.Generator, valid chain.Validator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var m Message
@@ -82,7 +82,7 @@ func handleWriteBlock(gen chain.Generator) http.HandlerFunc {
 		newBlock := gen(chain.Blockchain[len(chain.Blockchain)-1], m.BPM)
 		shared.Mutex.Unlock()
 
-		if chain.IsBlockValid(newBlock, chain.Blockchain[len(chain.Blockchain)-1]) {
+		if valid(newBlock, chain.Blockchain[len(chain.Blockchain)-1]) {
 			chain.Blockchain = append(chain.Blockchain, newBlock)
 			spew.Dump(chain.Blockchain)
 		}

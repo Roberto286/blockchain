@@ -112,8 +112,8 @@ The server responds with the newly mined block (`201 Created`). Note that mining
 
 ```
 cmd/pow/          entry point: loads config, creates the genesis block, starts the HTTP server
-internal/chain/   Block, hashing, validation, Generator type (consensus-agnostic)
-internal/pow/     proof-of-work block generation (mining) and Difficulty
+internal/chain/   Block interface, Generator/Validator types, hashing helper, concurrency-safe Chain
+internal/pow/     pow.Block, genesis, validation and proof-of-work mining
 internal/httpserver/  HTTP API (Gorilla Mux), takes a chain.Generator
 internal/shared/  the safety Mutex
 ```

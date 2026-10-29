@@ -6,7 +6,6 @@ import (
 	"blockchain/internal/pow"
 	shared "blockchain/internal/shared"
 	"log"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
@@ -18,22 +17,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go func() {
-		t := time.Now()
-		genesisBlock := chain.Block{}
-		genesisBlock = chain.Block{
-			Index:      0,
-			Timestamp:  t.String(),
-			BPM:        0,
-			Hash:       chain.CalculateBlockHash(genesisBlock),
-			PrevHash:   "",
-			Difficulty: pow.Difficulty,
-			Nonce:      "",
-		}
-		spew.Dump(genesisBlock)
-		shared.Mutex.Lock()
-		chain.Blockchain = append(chain.Blockchain, genesisBlock)
-		shared.Mutex.Unlock()
-	}()
-	log.Fatal(httpserver.Run(pow.GenerateBlock))
+	genesis := pow.Genesis()
+	spew.Dump(genesis)
+	shared.Mutex.Lock()
+	chain.Blockchain = append(chain.Blockchain, genesis)
+	shared.Mutex.Unlock()
+
+	log.Fatal(httpserver.Run(pow.GenerateBlock, pow.IsBlockValid))
 }

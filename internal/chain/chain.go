@@ -4,7 +4,6 @@ import (
 	"errors"
 	"slices"
 	"sync"
-	"time"
 )
 
 var ErrInvalidBlock = errors.New("invalid block")
@@ -18,19 +17,19 @@ var Blockchain []Block
 var TempBlocks []Block
 
 // New returns a chain containing only the genesis block.
-func New() *Chain {
-	return &Chain{blocks: []Block{{Timestamp: time.Now().String()}}}
+func New(genesis Block) *Chain {
+	return &Chain{blocks: []Block{genesis}}
 }
 
 // Add generates a block for bpm with gen, validates it and appends it to the chain.
-func (c *Chain) Add(gen Generator, bpm int) (Block, error) {
+func (c *Chain) Add(gen Generator, valid Validator, bpm int) (Block, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	prev := c.blocks[len(c.blocks)-1]
 	b := gen(prev, bpm)
-	if !IsBlockValid(b, prev) {
-		return Block{}, ErrInvalidBlock
+	if !valid(b, prev) {
+		return nil, ErrInvalidBlock
 	}
 	c.blocks = append(c.blocks, b)
 	return b, nil
